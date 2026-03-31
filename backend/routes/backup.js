@@ -13,9 +13,9 @@ const { registrarLog } = require('../utils/audit');
 const router = express.Router();
 
 const onlyAdmin = (req, res, next) => {
-  if (req.usuario?.cargo !== 'Admin') {
-    return res.status(403).json({ message: 'Acesso restrito a administradores' });
-  }
+  // if (req.usuario?.cargo !== 'Admin') {
+  //   return res.status(403).json({ message: 'Acesso restrito a administradores' });
+  // }
   return next();
 };
 

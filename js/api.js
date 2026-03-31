@@ -1,4 +1,4 @@
-﻿/**
+/**
  * API Helper - Integracao com Backend
  * Armazena token no localStorage e faz requisicoes autenticadas
  */
@@ -11,12 +11,9 @@ function resolveApiUrl() {
     return window.__API_URL__;
   }
 
-  if (window.location.protocol === 'file:') {
-    const port = localStorage.getItem('api_port') || '5000';
-    return `http://localhost:${port}/api`;
-  }
-
-  return `${window.location.origin}/api`;
+  // Sempre tentar conectar na porta 5000 no mesmo IP/hostname que o frontend foi acessado
+  const hostname = window.location.hostname || 'localhost';
+  return `http://${hostname}:5000/api`;
 }
 
 const API_URL = resolveApiUrl();

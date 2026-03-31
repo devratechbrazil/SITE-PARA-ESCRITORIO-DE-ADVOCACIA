@@ -21,7 +21,7 @@ const CobrancaSchema = new mongoose.Schema({
   },
   metodo: {
     type: String,
-    enum: ['pix', 'boleto', 'ambos', 'manual'],
+    enum: ['pix', 'boleto', 'cartao', 'manual'],
     default: 'manual'
   },
   descricao: {

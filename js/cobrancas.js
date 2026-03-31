@@ -1,4 +1,4 @@
-﻿/* ===================================================
+/* ===================================================
    COBRANCAS.JS - Cobrancas (Pix/Boleto via Asaas)
    =================================================== */
 if (!Auth.guard()) throw new Error('not auth');
@@ -105,7 +105,7 @@ function renderTabela() {
       <td class="td-muted">${UI.escHtml(c.descricao || '—')}</td>
       <td class="fw-700 valor-entrada">${UI.currency(c.valor)}</td>
       <td class="td-muted">${UI.date(c.vencimento)}</td>
-      <td class="td-muted">${metMap[c.metodo] || c.metodo || '—'}</td>
+      <td class="td-muted">${metMap[c.metodo] || (c.metodo === 'cartao' ? 'Cartão' : c.metodo) || '—'}</td>
       <td><span class="badge ${s.css}">${s.label}</span></td>
       <td class="td-muted">${UI.escHtml(c.usuario || '—')}</td>
       <td style="text-align:right">
@@ -139,139 +139,44 @@ async function gerarCobranca() {
 
     const btn = document.getElementById('btnGerarCobranca');
     btn.disabled = true;
-    document.getElementById('btnGerarTxt').innerHTML = '<span class="spinner"></span> Gerando...';
-
-    const cfg = DB.getConfig();
-
-    try {
-        if (cfg.asaasKey) {
-            await gerarViaAsaas({ clienteId, valor, vencimento, metodo, descricao, cfg });
-        } else {
-            const cob = await DB.saveCobranca({
-                clienteId,
-                valor,
-                vencimento,
-                metodo,
-                descricao,
-                status: 'pendente',
-                gateway: null,
-                usuario: Auth.currentUser()?.email
-            });
-
-            DB.addLog({ usuario: Auth.currentUser()?.email, acao: 'Criou cobranca', detalhe: `${UI.clienteNome(clienteId)} - ${UI.currency(valor)}` });
-            UI.toast('Cobranca salva localmente (sem gateway).', 'warning');
-            UI.closeModal('modalCobranca');
-            renderTabela();
-            renderStats();
-            setTimeout(() => verDetalhe(cob.id), 300);
-        }
-    } finally {
-        btn.disabled = false;
-        document.getElementById('btnGerarTxt').textContent = 'Gerar Cobranca';
-    }
-}
-
-async function gerarViaAsaas({ clienteId, valor, vencimento, metodo, descricao, cfg }) {
-    const cliente = DB.getCliente(clienteId);
-    if (!cliente) { UI.toast('Cliente nao encontrado.', 'error'); return; }
-
-    const billingType = metodo === 'pix' ? 'PIX' : metodo === 'boleto' ? 'BOLETO' : 'UNDEFINED';
-    const baseUrl = cfg.asaasAmbiente === 'production' ? 'https://api.asaas.com/v3' : 'https://sandbox.asaas.com/api/v3';
+    const btnTxt = document.getElementById('btnGerarTxt');
+    const originalTxt = btnTxt.textContent;
+    btnTxt.innerHTML = '<span class="spinner"></span> Gerando...';
 
     try {
-        // 1. Criar/buscar cliente no Asaas
-        const custResp = await fetch(`${baseUrl}/customers?email=${encodeURIComponent(cliente.email || '')}`, {
-            headers: { access_token: cfg.asaasKey }
-        });
-        let asaasCustomerId;
-        if (custResp.ok) {
-            const custData = await custResp.json();
-            if (custData.data && custData.data.length > 0) {
-                asaasCustomerId = custData.data[0].id;
-            }
-        }
-
-        if (!asaasCustomerId) {
-            const createCust = await fetch(`${baseUrl}/customers`, {
-                method: 'POST',
-                headers: { access_token: cfg.asaasKey, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: cliente.nome,
-                    email: cliente.email || '',
-                    phone: String(cliente.telefone || '').replace(/\D/g, ''),
-                    cpfCnpj: String(cliente.cpfCnpj || '').replace(/\D/g, '')
-                })
-            });
-            const cd = await createCust.json();
-            asaasCustomerId = cd.id;
-        }
-
-        // 2. Criar cobranca
-        const payResp = await fetch(`${baseUrl}/payments`, {
-            method: 'POST',
-            headers: { access_token: cfg.asaasKey, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                customer: asaasCustomerId,
-                billingType,
-                value: valor,
-                dueDate: vencimento,
-                description: descricao
-            })
-        });
-        const pay = await payResp.json();
-
-        if (!pay.id) {
-            UI.toast('Erro Asaas: ' + (pay.errors?.[0]?.description || JSON.stringify(pay)), 'error');
-            return;
-        }
-
-        let cob = await DB.saveCobranca({
+        const payload = {
             clienteId,
             valor,
             vencimento,
             metodo,
             descricao,
             status: 'pendente',
-            gateway: {
-                id: pay.id,
-                customerId: asaasCustomerId,
-                invoiceUrl: pay.invoiceUrl,
-                bankSlipUrl: pay.bankSlipUrl,
-                nossoNumero: pay.nossoNumero,
-                pixQrCodeImage: null,
-                pixCode: null
-            },
             usuario: Auth.currentUser()?.email
-        });
+        };
 
-        // 3. Buscar QR Code se Pix
-        if (metodo === 'pix' || metodo === 'ambos') {
-            try {
-                const pixResp = await fetch(`${baseUrl}/payments/${pay.id}/pixQrCode`, {
-                    headers: { access_token: cfg.asaasKey }
-                });
-                const pixData = await pixResp.json();
-                if (pixData.encodedImage) {
-                    cob.gateway.pixQrCodeImage = pixData.encodedImage;
-                    cob.gateway.pixCode = pixData.payload;
-                    cob = await DB.saveCobranca(cob);
-                }
-            } catch (error) {
-                console.warn('Pix QR error', error);
-            }
+        const result = await DB.saveCobranca(payload);
+
+        if (result.gatewayError) {
+            UI.toast(result.message, 'warning');
+        } else {
+            UI.toast('Cobranca gerada com sucesso!', 'success');
         }
 
-        DB.addLog({ usuario: Auth.currentUser()?.email, acao: 'Cobranca Asaas gerada', detalhe: `${pay.id} - ${UI.currency(valor)}` });
         UI.closeModal('modalCobranca');
         renderTabela();
         renderStats();
-        UI.toast('Cobranca gerada com sucesso!', 'success');
-        setTimeout(() => verDetalhe(cob.id), 300);
+        setTimeout(() => verDetalhe(result.id), 300);
+
     } catch (error) {
-        UI.toast('Erro ao conectar com o Asaas. Verifique a API Key.', 'error');
+        UI.toast(error.message || 'Erro ao gerar cobranca.', 'error');
         console.error(error);
+    } finally {
+        btn.disabled = false;
+        btnTxt.textContent = originalTxt;
     }
 }
+
+// Removido gerarViaAsaas antigo do cliente
 
 function verDetalhe(id) {
     const cob = DB.getCobranca(id);
@@ -285,16 +190,19 @@ function verDetalhe(id) {
             ? { label: 'Pago', css: 'badge-success' }
             : { label: 'Pendente', css: 'badge-warning' };
 
-    const metMap = { pix: 'Pix', boleto: 'Boleto', ambos: 'Pix + Boleto' };
+    const metMap = { pix: 'Pix', boleto: 'Boleto', cartao: 'Cartão de Crédito', manual: 'Manual' };
 
     let gatewayHtml = '';
     if (cob.gateway) {
         const g = cob.gateway;
-        const pixBlock = g.pixQrCodeImage ? `
+        const asaasId = g.asaasId || g.id;
+        const pix = g.pixData || {};
+        
+        const pixBlock = pix.encodedImage ? `
       <div class="qr-container" style="margin-top:16px">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">QR Code Pix</div>
-        <img src="data:image/png;base64,${g.pixQrCodeImage}" style="width:180px;height:180px" alt="QR Pix">
-        ${g.pixCode ? `<div class="pix-code" onclick="navigator.clipboard.writeText('${UI.escHtml(g.pixCode)}');UI.toast('Codigo copiado!','success')" style="cursor:pointer" title="Clique para copiar">${UI.escHtml(g.pixCode)}</div>` : ''}
+        <img src="data:image/png;base64,${pix.encodedImage}" style="width:180px;height:180px" alt="QR Pix">
+        ${pix.payload ? `<div class="pix-code" onclick="navigator.clipboard.writeText('${UI.escHtml(pix.payload)}');UI.toast('Codigo copiado!','success')" style="cursor:pointer" title="Clique para copiar">${UI.escHtml(pix.payload)}</div>` : ''}
       </div>` : '';
 
         const boletoBlock = g.bankSlipUrl ? `
@@ -310,7 +218,7 @@ function verDetalhe(id) {
         gatewayHtml = `
       <hr class="divider">
       <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:12px">Dados do Gateway</div>
-      <div style="font-size:13px;color:var(--text-secondary)">ID Asaas: <span style="color:var(--gold);font-family:monospace">${g.id}</span></div>
+      <div style="font-size:13px;color:var(--text-secondary)">ID Asaas: <span style="color:var(--gold);font-family:monospace">${asaasId}</span></div>
       ${pixBlock}${boletoBlock}${linkBlock}`;
     } else {
         gatewayHtml = '<hr class="divider"><p style="color:var(--text-muted);font-size:13px">Cobranca sem integracao de gateway.</p>';

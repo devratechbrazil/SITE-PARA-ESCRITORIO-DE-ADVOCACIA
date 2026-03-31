@@ -12,7 +12,9 @@
     <div class="app-layout">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-logo">
-                <div class="sidebar-logo-icon">⚖️</div>
+                <div class="sidebar-logo-icon">
+                    <img src="logoarimateia.png" alt="Arimateia Logo">
+                </div>
                 <div class="sidebar-logo-text">
                     <h2 id="nomeEscritorioSidebar">Escritório</h2>
                     <p>Sistema Jurídico</p>
@@ -110,7 +112,8 @@
                         <option value="">Todos os métodos</option>
                         <option value="pix">Pix</option>
                         <option value="boleto">Boleto</option>
-                        <option value="ambos">Pix + Boleto</option>
+                        <option value="cartao">Cartão de Crédito</option>
+                        <option value="manual">Manual</option>
                     </select>
                 </div>
 
@@ -165,9 +168,10 @@
                     <div class="form-group">
                         <label class="form-label">Método de pagamento *</label>
                         <select class="form-control" id="cobMetodo">
-                            <option value="pix">Pix</option>
-                            <option value="boleto">Boleto</option>
-                            <option value="ambos">Pix + Boleto</option>
+                            <option value="pix">Pix (Asaas)</option>
+                            <option value="boleto">Boleto (Asaas)</option>
+                            <option value="cartao">Cartão de Crédito (Asaas)</option>
+                            <option value="manual">Manual (Sem Gateway)</option>
                         </select>
                     </div>
                 </div>
@@ -188,7 +192,7 @@
                     style="padding:14px;background:var(--warning-bg);border:1px solid rgba(245,158,11,.2);border-radius:var(--radius);font-size:13px;color:var(--warning);display:none">
                     ⚠️ <strong>Configure a API Key do Asaas</strong> em <a href="configuracoes.html"
                         style="color:var(--gold);text-decoration:underline">Configurações → Integração</a> para gerar
-                    cobranças reais com Pix e Boleto.
+                    cobranças reais com Pix, Boleto e Cartão.
                     <br><small style="color:var(--text-muted)">Sem a API Key, a cobrança será salva localmente como
                         "pendente".</small>
                 </div>

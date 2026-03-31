@@ -177,10 +177,10 @@ const Auth = {
     if (user.perfil === 'admin') return true;
 
     const perms = {
-      financeiro: ['admin', 'financeiro'],
-      cobrancas: ['admin', 'financeiro'],
-      relatorios: ['admin', 'financeiro'],
-      usuarios: ['admin'],
+      financeiro: ['admin', 'advogado', 'financeiro'],
+      cobrancas: ['admin', 'advogado', 'financeiro'],
+      relatorios: ['admin', 'advogado', 'financeiro'],
+      usuarios: ['admin', 'advogado', 'financeiro'],
       documentos: ['admin', 'advogado', 'financeiro'],
       clientes: ['admin', 'advogado', 'financeiro']
     };

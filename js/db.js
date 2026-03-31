@@ -1,4 +1,4 @@
-﻿/* ===================================================
+/* ===================================================
    DB.JS - Cache local conectado a API (sem localStorage como fonte principal)
    =================================================== */
 
@@ -97,6 +97,7 @@ const DB = {
       clienteId: c.clienteId?._id || c.clienteId,
       vencimento,
       status: String(c.status || 'pendente').toLowerCase(),
+      gateway: c.gateway || null,
       criadoEm: c.criadoEm || c.dataCriacao || c.createdAt || new Date().toISOString()
     };
   },

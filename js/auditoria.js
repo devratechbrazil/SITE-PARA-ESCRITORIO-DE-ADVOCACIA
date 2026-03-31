@@ -2,10 +2,7 @@
    AUDITORIA.JS - Visualizador de Logs
    =================================================== */
 if (!Auth.guard()) throw new Error('not auth');
-if (Auth.currentUser()?.perfil !== 'admin') {
-    UI.toast('Acesso restrito a administradores.', 'error');
-    setTimeout(() => (window.location.href = 'dashboard.html'), 1500);
-}
+
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {

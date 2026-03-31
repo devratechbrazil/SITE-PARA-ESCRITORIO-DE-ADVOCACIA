@@ -1,7 +1,10 @@
 const express = require('express');
 const Cobranca = require('../models/Cobranca');
+const Cliente = require('../models/Cliente');
+const Configuracao = require('../models/Configuracao');
 const { proteger } = require('./auth');
 const { registrarLog } = require('../utils/audit');
+const Asaas = require('../utils/asaas');
 
 const router = express.Router();
 
@@ -61,7 +64,6 @@ router.post('/', proteger, async (req, res) => {
       metodo,
       descricao,
       status,
-      gateway,
       usuario,
       paidAt
     } = req.body;
@@ -70,6 +72,7 @@ router.post('/', proteger, async (req, res) => {
       return res.status(400).json({ message: 'clienteId, valor e vencimento sao obrigatorios' });
     }
 
+    // 1. Criar cobranca no banco local primeiro
     const cobranca = await Cobranca.create({
       usuarioId: req.usuario._id,
       clienteId,
@@ -78,10 +81,41 @@ router.post('/', proteger, async (req, res) => {
       metodo: metodo || 'manual',
       descricao: descricao || '',
       status: status || 'pendente',
-      gateway: gateway || null,
+      gateway: null,
       usuario: usuario || req.usuario.email,
       paidAt: normalizeDate(paidAt)
     });
+
+    // 2. Se o metodo for integrado (Asaas), processar
+    if (['pix', 'boleto', 'cartao'].includes(metodo)) {
+      try {
+        const config = await Configuracao.findOne({ usuarioId: req.usuario._id });
+        
+        if (config && config.asaasKey) {
+          const cliente = await Cliente.findById(clienteId);
+          if (!cliente) throw new Error('Cliente nao encontrado para integracao');
+
+          // Sincronizar cliente no Asaas
+          const asaasCustomerId = await Asaas.getOrCreateCustomer(config, cliente);
+          
+          // Gerar cobranca no Asaas
+          const asaasData = await Asaas.createCharge(config, asaasCustomerId, cobranca);
+          
+          // Atualizar cobranca local com dados do gateway
+          cobranca.gateway = asaasData;
+          await cobranca.save();
+        }
+      } catch (asaasError) {
+        console.error('Erro na integracao Asaas:', asaasError.message);
+        // Nao travamos a criacao da cobranca local, apenas logamos o erro ou poderíamos retornar erro
+        // Mas para UX, talvez seja melhor avisar.
+        return res.status(201).json({
+          message: 'Cobranca criada localmente, mas erro na integracao Asaas: ' + asaasError.message,
+          cobranca: mapCobranca(cobranca),
+          gatewayError: true
+        });
+      }
+    }
 
     await registrarLog({
       usuarioId: req.usuario._id,
