@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sistema-juridico
+    name: sistema-juridico-api
     runtime: node
     rootDir: backend
     buildCommand: npm install
@@ -16,4 +16,5 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: CORS_ORIGIN
-        sync: false
+        value: '*'
+

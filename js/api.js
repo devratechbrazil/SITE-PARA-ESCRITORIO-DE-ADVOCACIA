@@ -6,17 +6,38 @@
 const TOKEN_KEY = 'token_jwt';
 const LEGACY_TOKEN_KEY = 'token';
 
+// ============================================================
+// CONFIGURACAO DE PRODUCAO - ALTERE A URL ABAIXO APOS O DEPLOY
+// ============================================================
+// Depois de fazer deploy no Render, substitua a URL abaixo pela
+// URL real do seu servico. Exemplo:
+// const RENDER_BACKEND_URL = 'https://sistema-juridico-xxxx.onrender.com/api';
+const RENDER_BACKEND_URL = ''; // << COLE A URL DO RENDER AQUI (com /api no final)
+
 function resolveApiUrl() {
+  // 1) Se foi definida manualmente via script, usar essa
   if (window.__API_URL__) {
     return window.__API_URL__;
   }
 
-  // Sempre tentar conectar na porta 5000 no mesmo IP/hostname que o frontend foi acessado
+  // 2) Se estamos em producao (Vercel, GitHub Pages, etc.), usar backend do Render
+  const host = window.location.hostname || '';
+  const isProduction = host.includes('.vercel.app')
+    || host.includes('.github.io')
+    || host.includes('.netlify.app')
+    || (host !== 'localhost' && host !== '127.0.0.1' && !host.match(/^192\.168\./));
+
+  if (isProduction && RENDER_BACKEND_URL) {
+    return RENDER_BACKEND_URL;
+  }
+
+  // 3) Fallback: desenvolvimento local na porta 5000
   const hostname = window.location.hostname || 'localhost';
   return `http://${hostname}:5000/api`;
 }
 
 const API_URL = resolveApiUrl();
+console.log('[API] URL do backend:', API_URL);
 
 class API {
   constructor() {
