@@ -38,24 +38,16 @@ const allowedOrigins = parseCorsOrigins();
 
 const corsOptions = {
   credentials: true,
-  origin(origin, callback) {
-    // Requisicoes sem origin (curl, server-to-server) devem ser permitidas.
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    if (!allowedOrigins || allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
-    }
-
-    callback(new Error(`Origem nao permitida no CORS: ${origin}`));
-  }
+  origin: allowedOrigins ? allowedOrigins : true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
 // Middleware
 app.use(cors(corsOptions));
+
+// Garantir que preflight OPTIONS funcione para todas as rotas
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
