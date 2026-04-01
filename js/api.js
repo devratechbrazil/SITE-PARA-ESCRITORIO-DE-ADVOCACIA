@@ -12,7 +12,7 @@ const LEGACY_TOKEN_KEY = 'token';
 // Depois de fazer deploy no Render, substitua a URL abaixo pela
 // URL real do seu servico. Exemplo:
 // const RENDER_BACKEND_URL = 'https://sistema-juridico-xxxx.onrender.com/api';
-const RENDER_BACKEND_URL = ''; // << COLE A URL DO RENDER AQUI (com /api no final)
+const RENDER_BACKEND_URL = 'https://sistema-juridico-api.onrender.com/api';
 
 function resolveApiUrl() {
   // 1) Se foi definida manualmente via script, usar essa
